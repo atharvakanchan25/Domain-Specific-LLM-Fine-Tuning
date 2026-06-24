@@ -1,0 +1,43 @@
+{
+  "title": "Enterprise Knowledge LLM — Backend",
+  "uid": "ekllm-backend",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Request Rate (req/s)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "rate(http_requests_total{job=\"backend\"}[1m])",
+        "legendFormat": "req/s"
+      }]
+    },
+    {
+      "type": "stat",
+      "title": "P95 Latency (ms)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"backend\"}[5m])) * 1000",
+        "legendFormat": "p95 ms"
+      }]
+    },
+    {
+      "type": "stat",
+      "title": "Error Rate",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "rate(http_requests_total{job=\"backend\",status=~\"5..\"}[1m])",
+        "legendFormat": "errors/s"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests Over Time",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "targets": [{
+        "expr": "rate(http_requests_total{job=\"backend\"}[1m])",
+        "legendFormat": "{{method}} {{handler}}"
+      }]
+    }
+  ]
+}
