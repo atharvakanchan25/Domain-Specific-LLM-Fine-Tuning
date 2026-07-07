@@ -4,10 +4,12 @@ Generates instruction-tuning datasets from code, docs, bugs, commits.
 """
 from __future__ import annotations
 import json
+import logging
 import random
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from app.core.logging import logger
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,16 +40,40 @@ class DatasetBuilder:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def from_code_files(self, code_chunks: list[dict]) -> list[TrainingExample]:
+        try:
+            from training.dataset_builder.sources.code_source import (
+                extract_python_units, extract_generic_units, code_units_to_examples, LANG_MAP,
+            )
+        except ImportError:
+            from sources.code_source import (  # type: ignore
+                extract_python_units, extract_generic_units, code_units_to_examples, LANG_MAP,
+            )
         examples = []
         for chunk in code_chunks:
-            for template_key in ["explain_code", "explain_function", "bug_fix"]:
-                if template_key == "bug_fix" and random.random() > 0.3:
-                    continue
+            source_path = chunk.get("source_path", "")
+            suffix = Path(source_path).suffix.lower()
+            language = LANG_MAP.get(suffix)
+            if language == "python":
+                units = extract_python_units(Path(source_path))
+            elif language:
+                units = extract_generic_units(Path(source_path), language)
+            else:
+                # Fallback: treat whole chunk as a single explain_code example
+                content = chunk.get("content", "")
+                if len(content) > 50:
+                    examples.append(TrainingExample(
+                        instruction=PROMPT_TEMPLATES["explain_code"].format(code=content[:1500]),
+                        input="",
+                        output=f"This file ({Path(source_path).name}) contains code or documentation.",
+                        source=source_path,
+                    ))
+                continue
+            for ex in code_units_to_examples(units):
                 examples.append(TrainingExample(
-                    instruction=PROMPT_TEMPLATES[template_key].format(code=chunk["content"]),
-                    input="",
-                    output="[PLACEHOLDER — fill with LLM-generated or human answer]",
-                    source=chunk.get("source_path", ""),
+                    instruction=ex["instruction"],
+                    input=ex["input"],
+                    output=ex["output"],
+                    source=ex["source"],
                 ))
         return examples
 

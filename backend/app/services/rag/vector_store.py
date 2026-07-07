@@ -18,7 +18,8 @@ COLLECTIONS = {
 
 async def ensure_collections() -> None:
     client = get_qdrant()
-    existing = {c.name for c in await client.get_collections().then(lambda r: r.collections)}
+    response = await client.get_collections()
+    existing = {c.name for c in response.collections}
     for name, dim in COLLECTIONS.items():
         if name not in existing:
             await client.create_collection(

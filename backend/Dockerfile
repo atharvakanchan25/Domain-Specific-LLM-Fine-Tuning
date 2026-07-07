@@ -5,8 +5,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ git curl && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
+COPY requirements-backend.txt .
+RUN pip install --no-cache-dir -r requirements-backend.txt && \
     python -m spacy download en_core_web_sm
 
 COPY . .

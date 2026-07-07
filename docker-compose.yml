@@ -43,27 +43,27 @@ services:
     ports:
       - "6379:6379"
 
-  # ── LLM Inference ─────────────────────────────────
-  vllm:
-    image: vllm/vllm-openai:latest
-    command: >
-      --model ${LLM_MODEL}
-      --dtype auto
-      --max-model-len 8192
-      --gpu-memory-utilization 0.85
-    environment:
-      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
-    volumes:
-      - hf_cache:/root/.cache/huggingface
-    ports:
-      - "8001:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+  # ── LLM Inference (requires NVIDIA GPU — comment out if unavailable) ────
+  # vllm:
+  #   image: vllm/vllm-openai:latest
+  #   command: >
+  #     --model ${LLM_MODEL}
+  #     --dtype auto
+  #     --max-model-len 8192
+  #     --gpu-memory-utilization 0.85
+  #   environment:
+  #     HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
+  #   volumes:
+  #     - hf_cache:/root/.cache/huggingface
+  #   ports:
+  #     - "8001:8000"
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
 
   # ── Backend ───────────────────────────────────────
   backend:
@@ -106,7 +106,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    env_file: ./frontend/.env.local
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:

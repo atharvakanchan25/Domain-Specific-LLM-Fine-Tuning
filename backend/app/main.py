@@ -7,27 +7,39 @@ from app.core.logging import setup_logging
 from app.api.v1 import auth, ingestion, query, graph
 from app.db.neo4j import close_driver
 from app.services.rag.embedder import Embedder
-from app.services.rag.vector_store import VectorStore
+from app.services.rag.vector_store import VectorStore, ensure_collections
+from app.services.rag.chunker import Chunker
 from app.services.rag.query import RAGQueryService
 from app.services.knowledge_graph.service import KnowledgeGraphService
 from app.services.bug_intelligence.engine import BugIntelligenceEngine
 from app.services.org_memory.engine import OrgMemoryEngine
+from app.services.ingestion.engine import IngestionEngine
 from app.services.agents.specialized import (
     CodeAnalysisAgent, ArchitectureAgent, BugDiagnosisAgent, OrgMemoryAgent
 )
 from app.services.agents.orchestrator import set_dependencies
+from app.middleware.audit import AuditMiddleware
 
 setup_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await ensure_collections()
     embedder     = Embedder()
     vector_store = VectorStore()
     rag          = RAGQueryService(embedder)
     kg           = KnowledgeGraphService()
     bug_engine   = BugIntelligenceEngine(embedder, vector_store, None)
     org_memory   = OrgMemoryEngine(embedder, vector_store, kg, None)
+    ingestion_engine = IngestionEngine(
+        chunker=Chunker(),
+        embedder=embedder,
+        vector_store=vector_store,
+        graph_builder=kg,
+        db_session=None,
+    )
+    app.state.ingestion_engine = ingestion_engine
 
     set_dependencies({
         "code_analysis_agent": CodeAnalysisAgent(rag),
